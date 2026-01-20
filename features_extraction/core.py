@@ -15,7 +15,7 @@ from .pooling import get_pooling_strategy, POOLING_STRATEGIES
 from .device import DeviceManager
 from .tokenizer import DatasetTokenizer
 from .metafeatures import MetaFeaturesExtractor
-from .utils import register_hook, log_execution, validate_tensor_shape
+from .utils import register_hook, log_execution, validate_tensor_shape, save_features, save_metafeatures
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +119,10 @@ class FeaturesExtraction:
         features, labels = self._extract_with_hook(
             layer, tokenized, config, resolved_device
         )
+        
+        # Save to file if output_path is specified
+        if config.output_path is not None:
+            save_features(features, labels, config.output_path)
         
         # Convert to numpy if requested
         return self._convert_output(features, labels, config.return_numpy)
@@ -421,6 +425,10 @@ class FeaturesExtraction:
         
         labels_tensor = self._concatenate_labels(labels_list)
         
+        # Save to file if output_path is specified
+        if config.output_path is not None:
+            save_features(features_by_layer, labels_tensor, config.output_path)
+        
         # Convert to numpy if requested
         if config.return_numpy:
             features_by_layer = {k: v.numpy() for k, v in features_by_layer.items()}
@@ -475,6 +483,10 @@ class FeaturesExtraction:
         meta_df = self._extract_metafeatures_for_all_layers(
             features_by_layer, y, meta_config
         )
+        
+        # Save meta-features if output_path is specified
+        if meta_config.output_path is not None:
+            save_metafeatures(meta_df, meta_config.output_path)
         
         if return_features:
             return meta_df, features_by_layer

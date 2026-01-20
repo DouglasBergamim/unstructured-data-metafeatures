@@ -10,6 +10,7 @@ Modular and type-safe package for extracting and analyzing features from transfo
 - **Comprehensive Logging**: Detailed execution tracking with decorators
 - **Flexible Configuration**: Dataclass-based configuration
 - **Multiple Pooling Strategies**: CLS, mean, max, token-level
+- **File Storage**: Automatic saving of features and meta-features to disk (.npz, .pt, .parquet, .csv)
 
 ## 📦 Installation
 
@@ -116,14 +117,16 @@ extraction_config = ExtractionConfig(
     max_length=256,
     device="cuda",
     pooling="mean",
-    return_numpy=True
+    return_numpy=True,
+    output_path="features.npz"  # Optional: save to file
 )
 
 meta_config = MetaFeatureConfig(
     groups=["statistical", "model-based"],
     summaries=["mean", "sd"],
     dataset_name="my_dataset",
-    token_reduce="mean"
+    token_reduce="mean",
+    output_path="metafeatures.parquet"  # Optional: save to file
 )
 ```
 
@@ -151,6 +154,7 @@ See `examples.py` for comprehensive usage examples:
 3. **Meta-features** - Compute meta-features with PyMFE
 4. **Device Management** - Device detection and management
 5. **Pooling Strategies** - Compare different pooling methods
+6. **File Storage** - Save features and meta-features to disk
 
 ## 🎨 Design Patterns Used
 

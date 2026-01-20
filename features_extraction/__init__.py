@@ -32,7 +32,7 @@ from .pooling import PoolingStrategy, POOLING_STRATEGIES, get_pooling_strategy
 from .device import DeviceManager
 from .metafeatures import MetaFeaturesExtractor
 from .tokenizer import DatasetTokenizer
-from .utils import setup_logging
+from .utils import setup_logging, save_features, save_metafeatures
 
 __all__ = [
     "FeaturesExtraction",
@@ -45,6 +45,8 @@ __all__ = [
     "MetaFeaturesExtractor",
     "DatasetTokenizer",
     "setup_logging",
+    "save_features",
+    "save_metafeatures",
 ]
 
 __version__ = "1.0.0"

@@ -131,9 +131,13 @@ datasets/
 *.parquet
 *.feather
 *.arrow
+*.npz
 
-# Exception: Keep meta features
+# Exception: Keep meta features and saved features
 !Notebooks/meta/*.parquet
+!features_extraction/*.npz
+!features_extraction/*.pt
+!features_extraction/*.parquet
 
 # Large files
 *.zip
