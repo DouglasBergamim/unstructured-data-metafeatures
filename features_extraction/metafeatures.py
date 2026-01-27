@@ -124,33 +124,37 @@ class MetaFeaturesExtractor:
             # Single class edge case
             return 2
     
-    def _validate_summaries(self, summaries: Optional[List[str]]) -> List[str]:
+    def _validate_summaries(self, summaries: Optional[List[str]]) -> Optional[List[str]]:
         """Validate and return valid summary functions.
-        
+
         Args:
-            summaries: Requested summary functions
-            
+            summaries: Requested summary functions or None for no summarization
+
         Returns:
-            List of valid summary function names
+            List of valid summary function names, or None for raw values
         """
+        # If None, return None to get raw metafeature values
+        if summaries is None:
+            return None
+
         try:
             valid_summaries = set(MFE.valid_summary())
         except Exception:
             valid_summaries = {"mean", "sd", "median", "min", "max"}
-        
+
         if not summaries:
             return ["mean", "sd"]
-        
+
         # Filter to valid summaries
         validated = [s for s in summaries if s in valid_summaries]
-        
+
         if not validated:
             logger.warning(
                 f"No valid summaries in {summaries}, "
                 f"using default ['mean', 'sd']"
             )
             return ["mean", "sd"]
-        
+
         return validated
     
     def _prepare_groups(self, groups: Union[List[str], str]) -> List[str]:

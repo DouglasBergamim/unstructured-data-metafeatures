@@ -440,54 +440,87 @@ class FeaturesExtraction:
     @log_execution
     def extract_all_layers_and_metafeatures(
         self,
-        dataset: Dataset,
-        tokenize_fn: Callable,
+        dataset: Union[Dataset, Dict[str, Union[np.ndarray, torch.Tensor]]],
+        tokenize_fn: Optional[Callable] = None,
         extraction_config: Optional[ExtractionConfig] = None,
         meta_config: Optional[MetaFeatureConfig] = None,
         return_features: bool = False,
+        labels: Optional[Union[np.ndarray, torch.Tensor]] = None,
         **kwargs
     ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, Dict]]:
         """Complete pipeline: extract all layers and compute meta-features.
-        
+
         Args:
-            dataset: HuggingFace Dataset
-            tokenize_fn: Tokenization function
-            extraction_config: Feature extraction configuration
+            dataset: HuggingFace Dataset OR dict of pre-extracted features {layer_name: features}
+            tokenize_fn: Tokenization function (required if dataset is HF Dataset)
+            extraction_config: Feature extraction configuration (ignored if dataset is dict)
             meta_config: Meta-feature configuration
             return_features: Whether to return raw features
+            labels: Labels array (required if dataset is dict of features)
             **kwargs: Override config parameters
-            
+
         Returns:
             DataFrame of meta-features, optionally with features dict
+
+        Example with HuggingFace Dataset:
+            >>> meta_df = extractor.extract_all_layers_and_metafeatures(
+            ...     dataset=hf_dataset,
+            ...     tokenize_fn=tokenize_rte,
+            ...     extraction_config=extraction_config,
+            ...     meta_config=meta_config
+            ... )
+
+        Example with pre-extracted features:
+            >>> meta_df = extractor.extract_all_layers_and_metafeatures(
+            ...     dataset=features_by_layer,  # dict
+            ...     labels=labels_array,
+            ...     meta_config=meta_config
+            ... )
         """
         if extraction_config is None:
             extraction_config = ExtractionConfig()
         if meta_config is None:
             meta_config = MetaFeatureConfig()
-        
+
         # Apply kwargs overrides
         for key, value in kwargs.items():
             if hasattr(extraction_config, key) and value is not None:
                 setattr(extraction_config, key, value)
             if hasattr(meta_config, key) and value is not None:
                 setattr(meta_config, key, value)
-        
-        # Extract features from all layers
-        features_by_layer, y = self.extract_all_layers(
-            dataset=dataset,
-            tokenize_fn=tokenize_fn,
-            config=extraction_config
-        )
-        
+
+        # Check if dataset is a dict of features or HuggingFace Dataset
+        if isinstance(dataset, dict):
+            # Already have extracted features
+            if labels is None:
+                raise ValueError(
+                    "When passing a dict of features, you must provide 'labels' parameter"
+                )
+            features_by_layer = dataset
+            y = labels
+            logger.info("Using pre-extracted features from dict")
+        else:
+            # HuggingFace Dataset - need to extract features
+            if tokenize_fn is None:
+                raise ValueError(
+                    "When passing a HuggingFace Dataset, you must provide 'tokenize_fn' parameter"
+                )
+            # Extract features from all layers
+            features_by_layer, y = self.extract_all_layers(
+                dataset=dataset,
+                tokenize_fn=tokenize_fn,
+                config=extraction_config
+            )
+
         # Extract meta-features for each layer
         meta_df = self._extract_metafeatures_for_all_layers(
             features_by_layer, y, meta_config
         )
-        
+
         # Save meta-features if output_path is specified
         if meta_config.output_path is not None:
             save_metafeatures(meta_df, meta_config.output_path)
-        
+
         if return_features:
             return meta_df, features_by_layer
         return meta_df
@@ -539,11 +572,146 @@ class FeaturesExtraction:
             )
             df_layer["layer"] = layer_name
             dfs.append(df_layer)
+            
+            # Debugging: Check the type and content of extracted meta-features
+            logger.debug(f"Summaries used: {meta_config.summaries}")
+            logger.debug(f"Extracted meta-features for layer {layer_name}: {df_layer.head()}")
         
         return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame(
             columns=["feature", "value", "group", "layer", "dataset"]
         )
-    
+
+    @log_execution
+    def extract_metafeatures_per_instance(
+        self,
+        dataset: Dataset,
+        tokenize_fn: Callable,
+        extraction_config: Optional[ExtractionConfig] = None,
+        meta_config: Optional[MetaFeatureConfig] = None,
+        **kwargs
+    ) -> pd.DataFrame:
+        """Extract metafeatures for each instance individually.
+
+        Instead of computing metafeatures across the entire dataset,
+        this method computes metafeatures for each instance separately.
+
+        Args:
+            dataset: HuggingFace Dataset
+            tokenize_fn: Tokenization function
+            extraction_config: Feature extraction configuration
+            meta_config: Meta-feature configuration
+            **kwargs: Override config parameters
+
+        Returns:
+            DataFrame with columns: [instance_id, layer, feature, value, group, dataset]
+            Each row represents a metafeature for a specific instance and layer.
+
+        Example:
+            >>> meta_config = MetaFeatureConfig(
+            ...     groups=["statistical", "info-theory"],
+            ...     summaries=["mean", "sd"],
+            ...     dataset_name="rte_test",
+            ...     token_reduce="mean"
+            ... )
+            >>> extraction_config = ExtractionConfig(batch_size=16, device="auto")
+            >>>
+            >>> per_instance_meta_df = extractor.extract_metafeatures_per_instance(
+            ...     dataset=full_dataset,
+            ...     tokenize_fn=tokenize_rte,
+            ...     extraction_config=extraction_config,
+            ...     meta_config=meta_config
+            ... )
+            >>> print(per_instance_meta_df.head())
+        """
+        if extraction_config is None:
+            extraction_config = ExtractionConfig()
+        if meta_config is None:
+            meta_config = MetaFeatureConfig()
+
+        # Apply kwargs overrides
+        for key, value in kwargs.items():
+            if hasattr(extraction_config, key) and value is not None:
+                setattr(extraction_config, key, value)
+            if hasattr(meta_config, key) and value is not None:
+                setattr(meta_config, key, value)
+
+        # Extract raw features from all layers
+        features_by_layer, _ = self.extract_all_layers(
+            dataset=dataset,
+            tokenize_fn=tokenize_fn,
+            config=extraction_config
+        )
+
+        # Get and filter layer names
+        layer_names = self._prepare_layer_names(
+            list(features_by_layer.keys()),
+            meta_config.layer_filter,
+            meta_config.sort_numeric
+        )
+
+        logger.info(f"Extracting metafeatures per instance for {len(layer_names)} layers")
+
+        # Create metafeatures extractor
+        meta_extractor = MetaFeaturesExtractor(random_state=meta_config.random_state)
+
+        # Collect results for all instances
+        all_results = []
+
+        # Get number of instances from first layer
+        first_layer_features = features_by_layer[layer_names[0]]
+        n_instances = first_layer_features.shape[0]
+
+        logger.info(f"Processing {n_instances} instances")
+
+        # Process each instance
+        for instance_idx in range(n_instances):
+            # Extract metafeatures for each layer for this instance
+            for layer_name in layer_names:
+                X = features_by_layer[layer_name]
+
+                # Get this instance's features: shape [1, hidden_dim] or [1, n_tokens, hidden_dim]
+                X_instance = X[instance_idx:instance_idx+1]
+
+                # Reduce token-level features if needed
+                X_2d = self._prepare_features_for_meta(X_instance, meta_config.token_reduce)
+
+                # Create dummy label (required by PyMFE)
+                y_dummy = np.array([0])
+
+                # Extract meta-features for this instance
+                try:
+                    df_layer = meta_extractor.extract(
+                        X=X_2d,
+                        y=y_dummy,
+                        groups=meta_config.groups,
+                        summaries=meta_config.summaries,
+                        dataset_name=meta_config.dataset_name
+                    )
+                    df_layer['layer'] = layer_name
+                    df_layer['instance_id'] = instance_idx
+                    all_results.append(df_layer)
+                except Exception as e:
+                    logger.warning(
+                        f"Error extracting metafeatures for instance {instance_idx}, "
+                        f"layer {layer_name}: {e}"
+                    )
+
+        # Combine all results
+        if not all_results:
+            logger.warning("No metafeatures extracted")
+            return pd.DataFrame(
+                columns=['instance_id', 'layer', 'feature', 'value', 'group', 'dataset']
+            )
+
+        result_df = pd.concat(all_results, ignore_index=True)
+
+        # Reorder columns for clarity
+        result_df = result_df[['instance_id', 'layer', 'feature', 'value', 'group', 'dataset']]
+
+        logger.info(f"Extracted metafeatures for {n_instances} instances: {len(result_df)} total rows")
+
+        return result_df
+
     @staticmethod
     def _prepare_layer_names(
         layer_names: List[str],

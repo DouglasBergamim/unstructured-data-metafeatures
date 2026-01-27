@@ -44,10 +44,11 @@ class ExtractionConfig:
 @dataclass
 class MetaFeatureConfig:
     """Configuration for meta-feature extraction using PyMFE.
-    
+
     Attributes:
         groups: Meta-feature groups to extract ("all" or list of group names)
         summaries: Summary functions to apply (mean, sd, min, max, etc.)
+                   Use "default" for ["mean", "sd"], None for raw values, or list of summaries
         random_state: Random seed for reproducibility
         dataset_name: Name identifier for the dataset
         token_reduce: How to reduce token-level features ("mean", "max", "cls")
@@ -56,18 +57,21 @@ class MetaFeatureConfig:
         output_path: Optional path to save meta-features (supports .parquet, .csv)
     """
     groups: Union[List[str], str] = "all"
-    summaries: Optional[List[str]] = None
+    summaries: Optional[Union[List[str], str]] = "None"
     random_state: int = 42
     dataset_name: str = "unknown"
     token_reduce: str = "mean"
     layer_filter: Optional[Union[List[str], str]] = None
     sort_numeric: bool = True
     output_path: Optional[str] = None
-    
+
     def __post_init__(self):
-        """Set default summaries if not provided."""
-        if self.summaries is None:
+        """Process summaries configuration."""
+        if self.summaries == "default":
             self.summaries = ["mean", "sd"]
+        # If summaries is None, keep it as None to pass to PyMFE
+        # If summaries is a list, keep it as is
+
         if self.token_reduce not in {"mean", "max", "cls"}:
             raise ValueError(f"Invalid token_reduce: {self.token_reduce}")
         if self.output_path is not None:
