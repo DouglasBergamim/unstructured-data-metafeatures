@@ -405,7 +405,8 @@ class FeaturesExtraction:
                 # Initialize on first batch
                 if first_batch:
                     L = len(hidden_states)
-                    layer_names = ["embeddings"] + [f"layer_{i}" for i in range(L - 1)]
+                    # First layer is input, intermediate are layer_0...layer_N, last is embeddings
+                    layer_names = ["input"] + [f"layer_{i}" for i in range(L - 2)] + ["embeddings"]
                     features_lists = [[] for _ in range(L)]
                     first_batch = False
                     logger.info(f"Found {L} layers: {layer_names[:3]}...{layer_names[-1]}")
@@ -574,7 +575,7 @@ class FeaturesExtraction:
             dfs.append(df_layer)
             
             # Debugging: Check the type and content of extracted meta-features
-            logger.debug(f"Summaries used: {meta_config.summaries}")
+            logger.debug(f"Summaries used: {config.summaries}")
             logger.debug(f"Extracted meta-features for layer {layer_name}: {df_layer.head()}")
         
         return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame(

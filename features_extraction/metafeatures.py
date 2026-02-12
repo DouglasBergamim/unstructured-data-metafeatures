@@ -203,10 +203,10 @@ class MetaFeaturesExtractor:
             mfe = self._create_mfe(group_name, summaries, num_cv_folds)
             mfe.fit(X, y)
             names, values = mfe.extract()
-            
-            df = pd.DataFrame({"feature": names, "value": values})
+
+            df = self._normalize_mfe_output(names, values)
             df["group"] = group_name
-            
+
             logger.info(f"Extracted {len(names)} features for group '{group_name}'")
             return df
             
@@ -236,13 +236,10 @@ class MetaFeaturesExtractor:
             mfe = self._create_mfe(None, summaries, num_cv_folds)
             mfe.fit(X, y)
             names, values = mfe.extract()
-            
-            df = pd.DataFrame({
-                "feature": names,
-                "value": values,
-                "group": "unknown"
-            })
-            
+
+            df = self._normalize_mfe_output(names, values)
+            df["group"] = "unknown"
+
             logger.info(f"Extracted {len(names)} features (no explicit groups)")
             return df
             
@@ -250,6 +247,32 @@ class MetaFeaturesExtractor:
             logger.warning(f"Meta-feature extraction failed: {e}")
             return None
     
+    @staticmethod
+    def _normalize_mfe_output(names: list, values: list) -> pd.DataFrame:
+        """Normalize MFE output into a flat DataFrame with scalar values.
+
+        When ``summaries=None`` PyMFE returns raw per-sample arrays instead of
+        scalars.  This method explodes those arrays so that every row in the
+        resulting DataFrame has a single float in the ``value`` column, making
+        it compatible with Parquet serialisation.
+
+        Args:
+            names: Feature names returned by ``mfe.extract()``.
+            values: Corresponding values (scalars or arrays).
+
+        Returns:
+            DataFrame with columns ``feature``, ``value``, and ``index``.
+            ``index`` is 0 for scalar features; 0…N-1 for exploded arrays.
+        """
+        rows: list = []
+        for name, val in zip(names, values):
+            if isinstance(val, np.ndarray):
+                for i, v in enumerate(val.ravel()):
+                    rows.append({"feature": name, "value": float(v), "index": i})
+            else:
+                rows.append({"feature": name, "value": float(val), "index": 0})
+        return pd.DataFrame(rows)
+
     def _create_mfe(
         self,
         group_name: Optional[str],

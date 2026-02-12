@@ -106,21 +106,45 @@ class MaxPooling(PoolingStrategy):
 
 class TokenPooling(PoolingStrategy):
     """Keep all token-level representations (no pooling)."""
-    
+
     def pool(self, hidden: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
         """Return hidden states without modification.
-        
+
         Args:
             hidden: [B, T, H] tensor
             attention_mask: [B, T] tensor (unused)
-            
+
         Returns:
             [B, T, H] tensor (unchanged)
         """
         return hidden
-    
+
     def name(self) -> str:
         return "token"
+
+
+class FlattenPooling(PoolingStrategy):
+    """Flatten all token representations into a 1D vector per sample."""
+
+    def pool(self, hidden: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+        """Flatten token representations into 1D.
+
+        Args:
+            hidden: [B, T, H] tensor
+            attention_mask: [B, T] tensor (unused - all tokens are kept)
+
+        Returns:
+            [B, T*H] tensor (flattened)
+
+        Example:
+            Input: [32, 128, 768] (batch=32, tokens=128, hidden=768)
+            Output: [32, 98304] (32 samples, each with 128*768=98304 features)
+        """
+        batch_size = hidden.size(0)
+        return hidden.reshape(batch_size, -1)
+
+    def name(self) -> str:
+        return "flatten"
 
 
 # Registry of available pooling strategies
@@ -129,6 +153,7 @@ POOLING_STRATEGIES: Dict[str, PoolingStrategy] = {
     "mean": MeanPooling(),
     "max": MaxPooling(),
     "token": TokenPooling(),
+    "flatten": FlattenPooling(),
 }
 
 

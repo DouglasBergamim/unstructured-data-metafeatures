@@ -42,6 +42,10 @@ venv.bak/
 .vscode/
 *.code-workspace
 
+# Claude
+.claude
+CLAUDE.md
+
 # Jupyter Notebook
 .ipynb_checkpoints
 */.ipynb_checkpoints/*

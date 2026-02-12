@@ -1,0 +1,16 @@
+# Configuração de extração para RoBERTa fine-tunado localmente
+# Uso: python scripts/extract_rte.py --config scripts/configs/roberta_rte.yaml
+
+model:
+  path: "data/pretrained_models/roberta_rte_finetuned_best"  # caminho relativo à raiz do repo
+  output_name: "roberta_rte"
+
+extraction:
+  batch_size: 8
+  max_length: 128
+  pooling: "mean"
+
+metafeatures:
+  groups:
+    - "complexity"
+  summaries: null   # valores brutos sem sumarização

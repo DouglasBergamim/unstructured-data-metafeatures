@@ -1,0 +1,16 @@
+# Configuração de extração para DeBERTa-v3-base fine-tunado (HuggingFace)
+# Uso: python scripts/extract_rte.py --config scripts/configs/deberta_rte.yaml
+
+model:
+  path: "RazyDave/deberta-v3-base-finetuned-rte"
+  output_name: "deberta_v3_base_finetuned_rte"
+
+extraction:
+  batch_size: 8
+  max_length: 128
+  pooling: "mean"
+
+metafeatures:
+  groups:
+    - "complexity"
+  summaries: null   # valores brutos sem sumarização

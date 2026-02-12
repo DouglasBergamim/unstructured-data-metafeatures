@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Union, Literal
 
-Pooling = Literal["cls", "mean", "max", "token"]
+Pooling = Literal["cls", "mean", "max", "token", "flatten"]
 
 
 @dataclass
@@ -31,7 +31,7 @@ class ExtractionConfig:
             raise ValueError(f"batch_size must be positive, got {self.batch_size}")
         if self.max_length <= 0:
             raise ValueError(f"max_length must be positive, got {self.max_length}")
-        if self.pooling not in {"cls", "mean", "max", "token"}:
+        if self.pooling not in {"cls", "mean", "max", "token", "flatten"}:
             raise ValueError(f"Invalid pooling strategy: {self.pooling}")
         if self.output_path is not None:
             valid_exts = {".npz", ".pt", ".parquet"}
