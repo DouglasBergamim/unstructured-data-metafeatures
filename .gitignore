@@ -126,7 +126,6 @@ roberta_rte_finetuned_best/
 !Notebooks/roberta_rte_best/
 
 # Datasets
-data/
 datasets/
 *.csv
 *.tsv
