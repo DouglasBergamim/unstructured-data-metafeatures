@@ -94,6 +94,9 @@ $RECYCLE.BIN/
 *~
 .directory
 
+# Data directory (models, features, checkpoints — too large for git)
+data/
+
 # Model files and checkpoints
 *.pt
 *.pth
