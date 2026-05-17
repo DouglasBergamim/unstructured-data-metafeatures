@@ -1,0 +1,18 @@
+# Configuração de extração de embeddings CLIP no SNLI-VE
+# Uso: python scripts/extract_snli_ve_clip.py --config scripts/configs/clip_snli_ve.yaml
+
+model:
+  name: "openai/clip-vit-base-patch32"
+  output_name: "snli_ve_clip"
+
+dataset:
+  hf_id: "pingzhili/snli-ve"   # mirror HF com imagens PIL embutidas
+  split: "train"
+  n_per_class: 1000
+  seed: 42
+  # Schema deste mirror: coluna de label = "gold_label" (string), texto = "sentence"
+  label_col: "gold_label"
+  text_col: "sentence"
+
+extraction:
+  batch_size: 32

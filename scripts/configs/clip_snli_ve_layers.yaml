@@ -1,0 +1,18 @@
+# Layer-wise CLIP hidden state extraction — SNLI-VE
+# Extrai CLS-pooled embeddings de cada camada das torres vision e text.
+# Uso: python scripts/extract_snli_ve_clip_layers.py --config scripts/configs/clip_snli_ve_layers.yaml
+
+model:
+  name: "openai/clip-vit-base-patch32"
+  output_name: "snli_ve_clip_layers"
+
+dataset:
+  hf_id: "pingzhili/snli-ve"   # mirror HF com imagens PIL embutidas
+  split: "train"
+  n_per_class: 1000
+  seed: 42
+  label_col: "gold_label"
+  text_col: "sentence"
+
+extraction:
+  batch_size: 32

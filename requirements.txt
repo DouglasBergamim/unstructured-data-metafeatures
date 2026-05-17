@@ -36,3 +36,6 @@ colorlog>=6.7.0
 
 # Optional: For model evaluation
 evaluate>=0.4.0
+
+# Image loading (CLIP / SNLI-VE pipeline)
+Pillow>=10.0.0
