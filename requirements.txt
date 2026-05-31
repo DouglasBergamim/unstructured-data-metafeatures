@@ -34,6 +34,12 @@ tqdm>=4.65.0
 # Optional: For better logging
 colorlog>=6.7.0
 
+# Optional: Environment variable management
+python-dotenv>=1.0.0
+
+# Optional: Kaggle dataset download
+kaggle>=1.6.0
+
 # Optional: For model evaluation
 evaluate>=0.4.0
 
